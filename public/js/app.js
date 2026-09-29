@@ -1,5 +1,5 @@
 // ==========================================================================
-// PulseLead — Meta Lead Ads Real-Time Ingestion Engine
+// PulseLead — Enterprise Meta Lead Ads Real-Time Controller
 // ==========================================================================
 
 let socket;
@@ -7,8 +7,6 @@ let leadsData = [];
 let logsData = [];
 let audioEnabled = true;
 let activeFilter = 'all';
-let timerInterval = null;
-let timerSeconds = 300;
 
 // Presets Data
 const PRESETS = {
@@ -17,50 +15,62 @@ const PRESETS = {
     email: 'alex.morgan@greenenergy.com',
     phone: '+1 (555) 839-2041',
     formName: 'Residential Solar Savings Calculator',
-    source: 'Meta Instagram Feed - Spring 2026 Promo'
+    source: 'Meta Instagram Feed'
   },
   realestate: {
     name: 'Sophia Chen',
     email: 'sophia.chen@luxuryproperties.io',
     phone: '+1 (555) 492-1188',
-    formName: 'Waterfront Penthouse VIP Showing Request',
-    source: 'Meta Facebook Feed - High Net Worth'
+    formName: 'Waterfront Penthouse VIP Showing',
+    source: 'Meta Facebook Feed'
   },
   b2b: {
     name: 'Marcus Vance',
     email: 'marcus.v@cloudscale.tech',
     phone: '+1 (555) 720-9452',
-    formName: 'Enterprise Cloud Migration Whitepaper & Demo',
-    source: 'Meta Ads - B2B Tech Decision Makers'
+    formName: 'Enterprise Cloud Migration Whitepaper',
+    source: 'Meta Ads - B2B Audience'
   },
   auto: {
     name: 'Elena Rostova',
     email: 'elena.rostova@premierauto.com',
     phone: '+1 (555) 319-6402',
-    formName: '2026 Electric SUV Test Drive Reservation',
-    source: 'Meta Instant Lead Form - Auto Expo'
+    formName: '2026 Electric SUV Test Drive',
+    source: 'Meta Instant Lead Form'
   }
 };
 
 // DOM Elements
-const socketStatusChip = document.getElementById('socketStatusChip');
-const socketStatusText = document.getElementById('socketStatusText');
-const activeClientsCount = document.getElementById('activeClientsCount');
-const totalLeadsCount = document.getElementById('totalLeadsCount');
-const allCount = document.getElementById('allCount');
-const leadsContainer = document.getElementById('leadsContainer');
-const emptyState = document.getElementById('emptyState');
-const logStream = document.getElementById('logStream');
-const logDot = document.getElementById('logDot');
+const statTotalCount = document.getElementById('statTotalCount');
+const countAll = document.getElementById('countAll');
+const leadsTableBody = document.getElementById('leadsTableBody');
+const emptyStateContainer = document.getElementById('emptyStateContainer');
 const leadSearchInput = document.getElementById('leadSearchInput');
+const logsCountBadge = document.getElementById('logsCountBadge');
 
-// Mobile Modal
-const mobileModal = document.getElementById('mobileModal');
-const mobileMockToggleBtn = document.getElementById('mobileMockToggleBtn');
-const closeMobileModalBtn = document.getElementById('closeMobileModalBtn');
-const mobileLeadsList = document.getElementById('mobileLeadsList');
-const mobileEmpty = document.getElementById('mobileEmpty');
-const mobileCountBadge = document.getElementById('mobileCountBadge');
+// Drawer Elements
+const drawerBackdrop = document.getElementById('drawerBackdrop');
+const drawerContent = document.getElementById('drawerContent');
+const drawerLeadName = document.getElementById('drawerLeadName');
+const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+
+// Modals
+const simulateModalBackdrop = document.getElementById('simulateModalBackdrop');
+const openSimulateModalBtn = document.getElementById('openSimulateModalBtn');
+const closeSimulateModalBtn = document.getElementById('closeSimulateModalBtn');
+const mobilePreviewModal = document.getElementById('mobilePreviewModal');
+const openMobileModalBtn = document.getElementById('openMobileModalBtn');
+const closeMobilePreviewBtn = document.getElementById('closeMobilePreviewBtn');
+const mobileLeadsContainer = document.getElementById('mobileLeadsContainer');
+const mobileEmptyState = document.getElementById('mobileEmptyState');
+const mobileCountPill = document.getElementById('mobileCountPill');
+
+// Bottom Terminal
+const bottomTerminal = document.getElementById('bottomTerminal');
+const toggleLogsBtn = document.getElementById('toggleLogsBtn');
+const closeTerminalBtn = document.getElementById('closeTerminalBtn');
+const clearTerminalBtn = document.getElementById('clearTerminalBtn');
+const terminalLogsContainer = document.getElementById('terminalLogsContainer');
 
 // Audio Chime Synthesizer
 function playLeadChime() {
@@ -73,9 +83,9 @@ function playLeadChime() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
-    osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.12); // C6
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    osc.frequency.setValueAtTime(659.25, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
 
     osc.connect(gain);
@@ -83,21 +93,21 @@ function playLeadChime() {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.65);
   } catch (e) {
-    console.warn('Audio feedback notice:', e);
+    console.warn('Audio notice:', e);
   }
 }
 
-// Toast Helper
-function showToast(msg, type = 'info') {
-  const stack = document.getElementById('toastStack');
+// Toast Hub
+function showToast(message, type = 'info') {
+  const hub = document.getElementById('toastHub');
   const toast = document.createElement('div');
-  toast.className = `toast-msg ${type}`;
+  toast.className = `toast-item ${type}`;
   const icon = type === 'success' ? 'fa-circle-check' : (type === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-info');
-  toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${msg}</span>`;
-  stack.appendChild(toast);
+  toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+  hub.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateY(8px)';
+    toast.style.transform = 'translateY(10px)';
     setTimeout(() => toast.remove(), 250);
   }, 3500);
 }
@@ -122,27 +132,19 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Initialize Socket.IO Client
+// Socket Initialization
 function initSocket() {
   socket = io();
 
   socket.on('connect', () => {
-    socketStatusChip.className = 'telemetry-chip active';
-    socketStatusText.textContent = 'Pipeline Active';
+    showToast('Connected to live webhook engine', 'success');
   });
 
   socket.on('disconnect', () => {
-    socketStatusChip.className = 'telemetry-chip';
-    socketStatusText.textContent = 'Socket Disconnected';
+    showToast('Real-time connection lost', 'warn');
   });
 
-  socket.on('connection_ready', (data) => {
-    if (data && data.socketId) {
-      activeClientsCount.textContent = '1 Client';
-    }
-  });
-
-  // THE REAL-TIME LEAD EVENT LISTENER
+  // MAIN REAL-TIME INGESTION LISTENER
   socket.on('new_lead', (lead) => {
     leadsData.unshift(lead);
     updateCounters();
@@ -154,28 +156,28 @@ function initSocket() {
   // Log events
   socket.on('log_event', (log) => {
     logsData.unshift(log);
-    renderLogEntry(log, true);
-    if (logDot) logDot.style.display = 'block';
+    renderTerminalEntry(log, true);
+    logsCountBadge.textContent = logsData.length;
   });
 
-  // Data reset
+  // Reset event
   socket.on('leads_cleared', () => {
     leadsData = [];
     logsData = [];
     updateCounters();
     renderAllLeads();
-    logStream.innerHTML = '';
-    showToast('Reset completed', 'info');
+    terminalLogsContainer.innerHTML = '';
+    logsCountBadge.textContent = '0';
+    showToast('Workspace reset completed', 'info');
   });
 }
 
-// Initial Data Fetch
+// Initial Hydration
 async function loadInitialData() {
   try {
-    const [leadsRes, logsRes, cfgRes] = await Promise.all([
+    const [leadsRes, logsRes] = await Promise.all([
       fetch('/leads'),
-      fetch('/api/logs'),
-      fetch('/api/config')
+      fetch('/api/logs')
     ]);
 
     const leadsJson = await leadsRes.json();
@@ -188,78 +190,90 @@ async function loadInitialData() {
     const logsJson = await logsRes.json();
     if (logsJson.success && Array.isArray(logsJson.data)) {
       logsData = logsJson.data;
-      logStream.innerHTML = '';
-      logsData.forEach(l => renderLogEntry(l, false));
-    }
-
-    const cfgJson = await cfgRes.json();
-    if (cfgJson && cfgJson.verifyToken) {
-      const cfgTokenEl = document.getElementById('cfgToken');
-      if (cfgTokenEl) cfgTokenEl.textContent = cfgJson.verifyToken;
+      terminalLogsContainer.innerHTML = '';
+      logsData.forEach(l => renderTerminalEntry(l, false));
+      logsCountBadge.textContent = logsData.length;
     }
   } catch (err) {
-    console.error('Initial load failed:', err);
+    console.error('Failed initial hydration:', err);
   }
 }
 
 // Update Counters
 function updateCounters() {
   const count = leadsData.length;
-  totalLeadsCount.textContent = count;
-  allCount.textContent = count;
-  mobileCountBadge.textContent = count;
+  statTotalCount.textContent = count;
+  countAll.textContent = count;
+  mobileCountPill.textContent = count;
 }
 
-// Render Individual Lead Card
+// Render Lead Table Row
 function renderLeadRow(lead, isNew = false) {
-  if (emptyState) emptyState.style.display = 'none';
-  if (mobileEmpty) mobileEmpty.style.display = 'none';
+  if (emptyStateContainer) emptyStateContainer.style.display = 'none';
+  if (mobileEmptyState) mobileEmptyState.style.display = 'none';
 
   const initials = lead.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'LD';
 
-  const row = document.createElement('div');
-  row.className = `lead-row ${isNew ? 'flash-new' : ''}`;
-  row.setAttribute('data-id', lead.leadId);
-  row.setAttribute('data-source', lead.source || '');
-  row.innerHTML = `
-    <div class="lead-left-block">
-      <div class="lead-avatar-bubble">${initials}</div>
-      <div class="lead-core-info">
-        <h4>
-          ${escapeHtml(lead.name)}
-          <span class="channel-tag">${escapeHtml(lead.source || 'Meta Lead Ads')}</span>
-        </h4>
-        <div class="lead-meta-strip">
-          <span class="meta-token"><i class="fa-regular fa-envelope"></i> ${escapeHtml(lead.email)}</span>
-          <span class="meta-token"><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.phone)}</span>
-          <span class="meta-token"><i class="fa-regular fa-rectangle-list"></i> ${escapeHtml(lead.formName || 'Lead Form')}</span>
+  const tr = document.createElement('tr');
+  tr.className = isNew ? 'lead-row-animated' : '';
+  tr.setAttribute('data-id', lead.leadId);
+  tr.setAttribute('data-source', lead.source || '');
+
+  tr.innerHTML = `
+    <td>
+      <div class="lead-profile-cell">
+        <div class="lead-avatar">${initials}</div>
+        <div>
+          <span class="lead-name-text">${escapeHtml(lead.name)}</span>
+          <div class="lead-contact-line">
+            <span><i class="fa-regular fa-envelope"></i> ${escapeHtml(lead.email)}</span>
+            <span><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.phone)}</span>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="lead-right-block">
-      <span class="time-badge" data-time="${lead.receivedAt}">
-        <i class="fa-regular fa-clock"></i> ${timeAgo(lead.receivedAt)}
-      </span>
-      <span class="lead-id-code">ID: ${escapeHtml(lead.leadId)}</span>
-    </div>
+    </td>
+    <td>
+      <span class="form-badge-pill"><i class="fa-solid fa-rectangle-list text-muted"></i> ${escapeHtml(lead.formName || 'Meta Form')}</span>
+    </td>
+    <td>
+      <span class="channel-tag-pill"><i class="fa-brands fa-meta"></i> ${escapeHtml(lead.source || 'Meta Lead Ads')}</span>
+    </td>
+    <td>
+      <span class="time-cell" data-time="${lead.receivedAt}"><i class="fa-regular fa-clock"></i> ${timeAgo(lead.receivedAt)}</span>
+    </td>
+    <td>
+      <span class="id-code-tag">${escapeHtml(lead.leadId)}</span>
+    </td>
+    <td class="text-right">
+      <button class="table-action-btn" onclick="openLeadDrawer('${lead.leadId}')">
+        <i class="fa-solid fa-arrow-right"></i> Details
+      </button>
+    </td>
   `;
 
-  leadsContainer.insertBefore(row, leadsContainer.firstChild);
+  // Row click opens drawer
+  tr.addEventListener('click', (e) => {
+    if (!e.target.closest('button')) {
+      openLeadDrawer(lead.leadId);
+    }
+  });
 
-  // Render on Mobile Mock Screen
+  leadsTableBody.insertBefore(tr, leadsTableBody.firstChild);
+
+  // Render on Mobile Device
   const mobileCard = document.createElement('div');
-  mobileCard.className = `device-lead-card ${isNew ? 'flash-new' : ''}`;
+  mobileCard.className = `device-card-item ${isNew ? 'flash-new' : ''}`;
   mobileCard.innerHTML = `
     <h5>${escapeHtml(lead.name)}</h5>
     <p><i class="fa-regular fa-envelope"></i> ${escapeHtml(lead.email)}</p>
     <p><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.phone)}</p>
-    <span class="device-lead-time"><i class="fa-regular fa-clock"></i> ${timeAgo(lead.receivedAt)}</span>
+    <span class="device-time-tag"><i class="fa-regular fa-clock"></i> ${timeAgo(lead.receivedAt)}</span>
   `;
-  mobileLeadsList.insertBefore(mobileCard, mobileLeadsList.firstChild);
+  mobileLeadsContainer.insertBefore(mobileCard, mobileLeadsContainer.firstChild);
 
   if (isNew) {
     setTimeout(() => {
-      row.classList.remove('flash-new');
+      tr.classList.remove('lead-row-animated');
       mobileCard.classList.remove('flash-new');
     }, 3500);
   }
@@ -267,123 +281,140 @@ function renderLeadRow(lead, isNew = false) {
 
 // Render All Leads
 function renderAllLeads() {
-  leadsContainer.innerHTML = '';
-  mobileLeadsList.innerHTML = '';
+  leadsTableBody.innerHTML = '';
+  mobileLeadsContainer.innerHTML = '';
 
   if (leadsData.length === 0) {
-    leadsContainer.appendChild(emptyState);
-    emptyState.style.display = 'flex';
-    mobileLeadsList.appendChild(mobileEmpty);
-    mobileEmpty.style.display = 'block';
+    emptyStateContainer.style.display = 'flex';
+    mobileEmptyState.style.display = 'block';
     return;
   }
 
+  emptyStateContainer.style.display = 'none';
+  mobileEmptyState.style.display = 'none';
   leadsData.forEach(l => renderLeadRow(l, false));
 }
 
-// Render Log Entry
-function renderLogEntry(log, prepend = true) {
-  const el = document.createElement('div');
-  el.className = `log-entry ${log.type}`;
-  const t = new Date(log.timestamp).toLocaleTimeString();
-  const rawDetails = log.details ? JSON.stringify(log.details, null, 2) : '';
+// Open Lead Drawer
+window.openLeadDrawer = function(leadId) {
+  const lead = leadsData.find(l => l.leadId === leadId);
+  if (!lead) return;
 
-  el.innerHTML = `
-    <div class="log-header">
-      <span class="log-t">[${t}]</span>
-      <span class="log-lbl">${log.type}</span>
-      <span class="log-txt">${escapeHtml(log.message)}</span>
+  drawerLeadName.textContent = lead.name;
+  drawerContent.innerHTML = `
+    <div>
+      <span class="drawer-section-title">Contact & Attribution</span>
+      <div class="drawer-key-val-grid">
+        <div class="drawer-item">
+          <label>Full Name</label>
+          <span>${escapeHtml(lead.name)}</span>
+        </div>
+        <div class="drawer-item">
+          <label>Phone Number</label>
+          <span>${escapeHtml(lead.phone)}</span>
+        </div>
+        <div class="drawer-item full-width">
+          <label>Email Address</label>
+          <span>${escapeHtml(lead.email)}</span>
+        </div>
+        <div class="drawer-item">
+          <label>Campaign Source</label>
+          <span>${escapeHtml(lead.source)}</span>
+        </div>
+        <div class="drawer-item">
+          <label>Meta Form Name</label>
+          <span>${escapeHtml(lead.formName)}</span>
+        </div>
+        <div class="drawer-item">
+          <label>Leadgen ID</label>
+          <code>${escapeHtml(lead.leadId)}</code>
+        </div>
+        <div class="drawer-item">
+          <label>Received Timestamp</label>
+          <span>${new Date(lead.receivedAt).toLocaleString()}</span>
+        </div>
+      </div>
     </div>
-    ${rawDetails ? `<pre class="log-meta-raw">${escapeHtml(rawDetails)}</pre>` : ''}
+
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span class="drawer-section-title" style="margin-bottom: 0;">Raw Normalized Payload</span>
+        <button class="table-action-btn" onclick="copyRawJson('${lead.leadId}')">
+          <i class="fa-regular fa-copy"></i> Copy JSON
+        </button>
+      </div>
+      <pre class="drawer-json-block" id="rawJson_${lead.leadId}"><code>${escapeHtml(JSON.stringify(lead, null, 2))}</code></pre>
+    </div>
+  `;
+
+  drawerBackdrop.classList.add('active');
+};
+
+// Copy Raw JSON helper
+window.copyRawJson = function(leadId) {
+  const el = document.getElementById(`rawJson_${leadId}`);
+  if (el) {
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      showToast('Payload copied to clipboard', 'info');
+    });
+  }
+};
+
+// Close Drawer
+closeDrawerBtn.addEventListener('click', () => drawerBackdrop.classList.remove('active'));
+drawerBackdrop.addEventListener('click', (e) => {
+  if (e.target === drawerBackdrop) drawerBackdrop.classList.remove('active');
+});
+
+// Render Terminal Log Entry
+function renderTerminalEntry(log, prepend = true) {
+  const div = document.createElement('div');
+  div.className = 'term-entry';
+  const t = new Date(log.timestamp).toLocaleTimeString();
+  div.innerHTML = `
+    <span class="term-t">[${t}]</span>
+    <span class="term-tag ${log.type}">${log.type}</span>
+    <span class="term-msg">${escapeHtml(log.message)}</span>
   `;
 
   if (prepend) {
-    logStream.insertBefore(el, logStream.firstChild);
+    terminalLogsContainer.insertBefore(div, terminalLogsContainer.firstChild);
   } else {
-    logStream.appendChild(el);
+    terminalLogsContainer.appendChild(div);
   }
 }
 
-// Trigger Quick Lead Helper
-window.triggerQuickLead = function(presetKey) {
+// Quick Preset Trigger from Top Bar
+window.triggerQuickPreset = async function(presetKey) {
   const p = PRESETS[presetKey] || PRESETS.solar;
-  document.getElementById('simName').value = p.name;
-  document.getElementById('simEmail').value = p.email;
-  document.getElementById('simPhone').value = p.phone;
-  document.getElementById('simFormName').value = p.formName;
-  document.getElementById('simSource').value = p.source;
-
-  document.getElementById('simulatorForm').dispatchEvent(new Event('submit'));
-};
-
-// Copy Code Utility
-window.copyCode = function(id) {
-  const text = document.getElementById(id).textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    showToast('Copied to clipboard', 'info');
-  });
-};
-
-// Global Keyboard Shortcut: '/' to focus search
-document.addEventListener('keydown', (e) => {
-  if (e.key === '/' && document.activeElement !== leadSearchInput) {
-    e.preventDefault();
-    leadSearchInput.focus();
-  }
-});
-
-// Search Filter
-leadSearchInput.addEventListener('input', (e) => {
-  const query = e.target.value.toLowerCase().trim();
-  document.querySelectorAll('.lead-row').forEach(row => {
-    const text = row.textContent.toLowerCase();
-    row.style.display = text.includes(query) ? 'flex' : 'none';
-  });
-});
-
-// Channel Filter Chips
-document.querySelectorAll('.filter-chip').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeFilter = btn.getAttribute('data-filter');
-
-    document.querySelectorAll('.lead-row').forEach(row => {
-      const source = (row.getAttribute('data-source') || '').toLowerCase();
-      if (activeFilter === 'all') {
-        row.style.display = 'flex';
-      } else if (activeFilter === 'meta') {
-        row.style.display = source.includes('meta') || source.includes('facebook') || source.includes('instagram') ? 'flex' : 'none';
-      } else if (activeFilter === 'instant') {
-        row.style.display = source.includes('instant') || source.includes('form') ? 'flex' : 'none';
-      }
+  try {
+    const res = await fetch('/api/simulate-lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
     });
-  });
+    await res.json();
+  } catch (err) {
+    showToast('Simulation error: ' + err.message, 'warn');
+  }
+};
+
+// Simulate Modal Controls
+window.openSimulateModal = function() {
+  simulateModalBackdrop.classList.add('active');
+};
+openSimulateModalBtn.addEventListener('click', openSimulateModal);
+closeSimulateModalBtn.addEventListener('click', () => simulateModalBackdrop.classList.remove('active'));
+simulateModalBackdrop.addEventListener('click', (e) => {
+  if (e.target === simulateModalBackdrop) simulateModalBackdrop.classList.remove('active');
 });
 
-// Console Tab Navigation
-document.querySelectorAll('.console-tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.console-tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.console-view').forEach(v => v.classList.remove('active'));
-
-    btn.classList.add('active');
-    const targetId = btn.getAttribute('data-target');
-    const targetPanel = document.getElementById(targetId);
-    if (targetPanel) targetPanel.classList.add('active');
-
-    if (targetId === 'panel-inspector' && logDot) {
-      logDot.style.display = 'none';
-    }
-  });
-});
-
-// Preset Card Click Handler
-document.querySelectorAll('.preset-card').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.preset-card').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const key = btn.getAttribute('data-preset');
+// Preset Card Click in Modal
+document.querySelectorAll('.preset-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    const key = card.getAttribute('data-preset');
     const p = PRESETS[key];
     if (p) {
       document.getElementById('simName').value = p.name;
@@ -395,10 +426,10 @@ document.querySelectorAll('.preset-card').forEach(btn => {
   });
 });
 
-// Simulator Form Submission
-document.getElementById('simulatorForm').addEventListener('submit', async (e) => {
+// Simulate Form Submit
+document.getElementById('simulateLeadForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const btn = document.getElementById('submitSimBtn');
+  const btn = document.getElementById('submitSimulateBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Emitting...';
 
@@ -417,16 +448,17 @@ document.getElementById('simulatorForm').addEventListener('submit', async (e) =>
       body: JSON.stringify(payload)
     });
     await res.json();
+    simulateModalBackdrop.classList.remove('active');
   } catch (err) {
     showToast('Simulation error: ' + err.message, 'warn');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Dispatch Webhook Lead';
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Dispatch Webhook';
   }
 });
 
-// Raw Webhook Dispatcher
-document.getElementById('sendRawWebhookBtn').addEventListener('click', async () => {
+// Send Raw Meta JSON
+document.getElementById('sendRawJsonBtn').addEventListener('click', async () => {
   const randId = 'meta_lead_' + Math.floor(10000000 + Math.random() * 90000000);
   const payload = {
     object: 'page',
@@ -455,87 +487,93 @@ document.getElementById('sendRawWebhookBtn').addEventListener('click', async () 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    showToast(`Dispatched raw Meta packet (${randId})`, 'success');
+    showToast(`Dispatched Meta JSON packet (${randId})`, 'success');
+    simulateModalBackdrop.classList.remove('active');
   } catch (err) {
-    showToast('Webhook delivery failed: ' + err.message, 'warn');
+    showToast('Webhook failed: ' + err.message, 'warn');
   }
 });
 
-// Clear Logs
-document.getElementById('clearLogsBtn').addEventListener('click', () => {
-  logStream.innerHTML = '';
-  logsData = [];
+// Mobile Preview Modal Controls
+openMobileModalBtn.addEventListener('click', () => mobilePreviewModal.classList.add('active'));
+closeMobilePreviewBtn.addEventListener('click', () => mobilePreviewModal.classList.remove('active'));
+mobilePreviewModal.addEventListener('click', (e) => {
+  if (e.target === mobilePreviewModal) mobilePreviewModal.classList.remove('active');
 });
 
-// Reset All Data
-document.getElementById('clearDataBtn').addEventListener('click', async () => {
-  if (confirm('Reset all leads and logs?')) {
+// Bottom Terminal Controls
+toggleLogsBtn.addEventListener('click', () => bottomTerminal.classList.toggle('active'));
+closeTerminalBtn.addEventListener('click', () => bottomTerminal.classList.remove('active'));
+clearTerminalBtn.addEventListener('click', () => {
+  terminalLogsContainer.innerHTML = '';
+  logsData = [];
+  logsCountBadge.textContent = '0';
+});
+
+// Reset Data
+document.getElementById('resetDataBtn').addEventListener('click', async () => {
+  if (confirm('Clear all leads and logs for a clean demonstration?')) {
     await fetch('/api/clear', { method: 'POST' });
   }
 });
 
 // Audio Toggle
-const audioToggleBtn = document.getElementById('audioToggleBtn');
-const audioIcon = document.getElementById('audioIcon');
-audioToggleBtn.addEventListener('click', () => {
+const toggleSoundBtn = document.getElementById('toggleSoundBtn');
+const soundIcon = document.getElementById('soundIcon');
+toggleSoundBtn.addEventListener('click', () => {
   audioEnabled = !audioEnabled;
-  audioIcon.className = audioEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
-  showToast(audioEnabled ? 'Audio feedback enabled' : 'Audio feedback muted', 'info');
+  soundIcon.className = audioEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+  showToast(audioEnabled ? 'Audio alerts enabled' : 'Audio alerts muted', 'info');
 });
 
-// Mobile Mock Toggle
-mobileMockToggleBtn.addEventListener('click', () => mobileModal.classList.add('active'));
-closeMobileModalBtn.addEventListener('click', () => mobileModal.classList.remove('active'));
-
-// Loom 5-min Countdown Timer
-const loomTimer = document.getElementById('loomTimer');
-const startTimerBtn = document.getElementById('startTimerBtn');
-const pauseTimerBtn = document.getElementById('pauseTimerBtn');
-const resetTimerBtn = document.getElementById('resetTimerBtn');
-
-function updateLoomDisplay() {
-  const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
-  const s = (timerSeconds % 60).toString().padStart(2, '0');
-  loomTimer.textContent = `${m}:${s}`;
-}
-
-startTimerBtn.addEventListener('click', () => {
-  if (timerInterval) return;
-  timerInterval = setInterval(() => {
-    if (timerSeconds > 0) {
-      timerSeconds--;
-      updateLoomDisplay();
-    } else {
-      clearInterval(timerInterval);
-      timerInterval = null;
-      showToast('5-minute presentation time limit reached', 'warn');
-    }
-  }, 1000);
+// Search Filter
+leadSearchInput.addEventListener('input', (e) => {
+  const query = e.target.value.toLowerCase().trim();
+  document.querySelectorAll('#leadsTableBody tr').forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(query) ? '' : 'none';
+  });
 });
 
-pauseTimerBtn.addEventListener('click', () => {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
+// Channel Filter Buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.getAttribute('data-filter');
+
+    document.querySelectorAll('#leadsTableBody tr').forEach(row => {
+      const source = (row.getAttribute('data-source') || '').toLowerCase();
+      if (activeFilter === 'all') {
+        row.style.display = '';
+      } else if (activeFilter === 'meta') {
+        row.style.display = source.includes('meta') || source.includes('facebook') || source.includes('instagram') ? '' : 'none';
+      } else if (activeFilter === 'instant') {
+        row.style.display = source.includes('instant') || source.includes('form') ? '' : 'none';
+      }
+    });
+  });
+});
+
+// Global Keyboard Shortcuts: '/' for search, 'N' for new lead
+document.addEventListener('keydown', (e) => {
+  if (e.key === '/' && document.activeElement !== leadSearchInput) {
+    e.preventDefault();
+    leadSearchInput.focus();
+  }
+  if ((e.key === 'n' || e.key === 'N') && document.activeElement.tagName !== 'INPUT' && !simulateModalBackdrop.classList.contains('active')) {
+    e.preventDefault();
+    openSimulateModal();
   }
 });
 
-resetTimerBtn.addEventListener('click', () => {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-  timerSeconds = 300;
-  updateLoomDisplay();
-});
-
-// Relative time refresher
+// Relative Time Refresh Loop
 setInterval(() => {
-  document.querySelectorAll('.time-badge[data-time]').forEach(el => {
+  document.querySelectorAll('.time-cell[data-time]').forEach(el => {
     const t = el.getAttribute('data-time');
     el.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeAgo(t)}`;
   });
-  document.querySelectorAll('.device-lead-time[data-time]').forEach(el => {
+  document.querySelectorAll('.device-time-tag[data-time]').forEach(el => {
     const t = el.getAttribute('data-time');
     el.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeAgo(t)}`;
   });

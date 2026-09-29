@@ -3,377 +3,345 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PulseLead — Meta Lead Ads Real-Time Ingestion Engine</title>
-  <meta name="description" content="Production-grade real-time event pipeline for Meta Lead Ads with instant WebSocket dispatch and live stream inspector.">
-
-  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <title>PulseLead — Meta Lead Ads Real-Time Intelligence</title>
+  
+  <!-- Modern Typography: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- FontAwesome Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
+  
   <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
-
+  
   <!-- Stylesheet -->
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="theme-obsidian">
+<body>
 
-  <!-- Top System Bar -->
-  <header class="navbar">
-    <div class="nav-brand">
-      <div class="brand-badge">
-        <svg class="meta-logo" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-          <path d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9v-7H7.9v-2.9h2.54V9.85c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33v7a10 10 0 0 0 8.44-9.9c0-5.53-4.5-10.02-10-10.02Z"/>
-        </svg>
+  <!-- Top App Navigation -->
+  <header class="top-nav">
+    <div class="nav-left">
+      <div class="brand">
+        <div class="brand-logo">
+          <i class="fa-brands fa-meta"></i>
+        </div>
+        <div class="brand-info">
+          <span class="brand-name">PulseLead <span class="badge-ver">v20.0</span></span>
+          <span class="brand-sub">Meta Ads Real-Time Engine</span>
+        </div>
       </div>
-      <div class="brand-meta">
-        <span class="brand-title">PulseLead<span class="brand-ver">v20.0</span></span>
-        <span class="brand-desc">Meta Webhook Pipeline</span>
+      <div class="nav-separator"></div>
+      <div class="connection-status" id="connectionStatus">
+        <span class="status-indicator"></span>
+        <span class="status-label">Webhook Stream Live</span>
+        <span class="latency-pill">&lt; 15ms</span>
       </div>
     </div>
 
-    <!-- Live Telemetry Status -->
-    <div class="telemetry-bar">
-      <div class="telemetry-chip active" id="socketStatusChip">
-        <span class="pulse-indicator"></span>
-        <span class="telemetry-text" id="socketStatusText">Pipeline Active</span>
-        <span class="telemetry-divider"></span>
-        <span class="telemetry-clients" id="activeClientsCount">1 Client</span>
-      </div>
-      <div class="telemetry-chip ghost">
-        <i class="fa-solid fa-bolt"></i>
-        <span>Push Latency: <strong class="text-emerald">&lt;15ms</strong></span>
-      </div>
-    </div>
+    <div class="nav-right">
+      <button class="btn btn-secondary btn-sm" id="toggleSoundBtn" title="Toggle Sound Feedback">
+        <i class="fa-solid fa-volume-high" id="soundIcon"></i>
+        <span>Audio Alerts</span>
+      </button>
 
-    <!-- Global Controls -->
-    <div class="nav-actions">
-      <div class="action-group">
-        <button class="nav-btn" id="audioToggleBtn" title="Toggle Sound Feedback">
-          <i class="fa-solid fa-volume-high" id="audioIcon"></i>
-        </button>
-        <button class="nav-btn" id="mobileMockToggleBtn" title="Open Mobile Screen Preview">
-          <i class="fa-solid fa-mobile-screen-button"></i>
-          <span class="btn-text-hide">Device View</span>
-        </button>
-        <button class="nav-btn danger-hover" id="clearDataBtn" title="Clear All Leads & Reset">
-          <i class="fa-solid fa-rotate-left"></i>
-          <span class="btn-text-hide">Reset</span>
-        </button>
-      </div>
+      <button class="btn btn-secondary btn-sm" id="openMobileModalBtn">
+        <i class="fa-solid fa-mobile-screen"></i>
+        <span>Mobile Preview</span>
+      </button>
+
+      <button class="btn btn-secondary btn-sm" id="toggleLogsBtn">
+        <i class="fa-solid fa-terminal"></i>
+        <span>Logs <span class="counter-badge" id="logsCountBadge">0</span></span>
+      </button>
+
+      <button class="btn btn-primary btn-sm" id="openSimulateModalBtn">
+        <i class="fa-solid fa-plus"></i>
+        <span>Test Lead Event</span>
+      </button>
+
+      <button class="btn btn-icon-subtle" id="resetDataBtn" title="Reset All Leads">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
     </div>
   </header>
 
-  <!-- Workspace Grid Layout -->
-  <div class="workspace-grid">
+  <!-- Main View Container -->
+  <main class="app-main">
     
-    <!-- LEFT PANEL: Inbound Leads Stream (Core CRM Feed) -->
-    <section class="leads-panel">
-      
-      <!-- Top Metrics Summary Strip -->
-      <div class="metrics-strip">
-        <div class="metric-item">
-          <span class="metric-subtitle">Total Leads Ingested</span>
-          <div class="metric-number-row">
-            <h3 class="metric-num" id="totalLeadsCount">0</h3>
-            <span class="metric-pill pill-emerald"><i class="fa-solid fa-circle-dot"></i> Live Stream</span>
+    <!-- Top Stats Row -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Total Inbound Leads</span>
+          <div class="stat-icon-wrap bg-blue-subtle">
+            <i class="fa-solid fa-users"></i>
           </div>
         </div>
-
-        <div class="metric-item">
-          <span class="metric-subtitle">Webhook Deduplication</span>
-          <div class="metric-number-row">
-            <h3 class="metric-num">100%</h3>
-            <span class="metric-pill pill-blue">O(1) Set</span>
-          </div>
-        </div>
-
-        <div class="metric-item">
-          <span class="metric-subtitle">Meta Graph API</span>
-          <div class="metric-number-row">
-            <h3 class="metric-num text-purple">v20.0</h3>
-            <span class="metric-pill pill-purple">Enriched</span>
-          </div>
+        <div class="stat-body">
+          <h2 class="stat-value" id="statTotalCount">0</h2>
+          <span class="stat-subtext text-success"><i class="fa-solid fa-arrow-trend-up"></i> Real-time push active</span>
         </div>
       </div>
 
-      <!-- Feed Controls: Search & Channel Filters -->
-      <div class="feed-controls-row">
-        <div class="filter-tabs">
-          <button class="filter-chip active" data-filter="all">All Channels (<span id="allCount">0</span>)</button>
-          <button class="filter-chip" data-filter="meta">Meta Ads</button>
-          <button class="filter-chip" data-filter="instant">Instant Form</button>
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Meta Graph API</span>
+          <div class="stat-icon-wrap bg-purple-subtle">
+            <i class="fa-brands fa-facebook"></i>
+          </div>
         </div>
-
-        <div class="feed-search">
-          <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" id="leadSearchInput" placeholder="Filter leads by name, email, or phone...">
-          <kbd class="search-kbd">/</kbd>
+        <div class="stat-body">
+          <h2 class="stat-value text-purple">Connected</h2>
+          <span class="stat-subtext">Automatic field enrichment</span>
         </div>
       </div>
 
-      <!-- Live Leads Container -->
-      <div class="leads-container" id="leadsContainer">
-        <!-- Empty State -->
-        <div class="empty-feed-placeholder" id="emptyState">
-          <div class="empty-icon-ring">
-            <i class="fa-brands fa-meta"></i>
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Deduplication Rate</span>
+          <div class="stat-icon-wrap bg-emerald-subtle">
+            <i class="fa-solid fa-shield-halved"></i>
           </div>
-          <h4>Listening for Inbound Leads</h4>
-          <p>Submit a test lead via the <strong>Developer Console</strong> on the right or use Meta's official Lead Testing Tool. Leads will materialize instantly.</p>
-          <div class="empty-quick-action">
-            <button class="btn-action-primary" onclick="triggerQuickLead('solar')">
-              <i class="fa-solid fa-play"></i> Trigger Demo Lead Event
-            </button>
+        </div>
+        <div class="stat-body">
+          <h2 class="stat-value text-emerald">100%</h2>
+          <span class="stat-subtext">O(1) Memory Cache filter</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Verification Handshake</span>
+          <div class="stat-icon-wrap bg-amber-subtle">
+            <i class="fa-solid fa-circle-check"></i>
           </div>
+        </div>
+        <div class="stat-body">
+          <h2 class="stat-value text-amber">Active</h2>
+          <span class="stat-subtext">GET /webhook/meta 200 OK</span>
         </div>
       </div>
     </section>
 
-    <!-- RIGHT PANEL: Developer Control Deck & Live Inspector -->
-    <aside class="console-panel">
+    <!-- Leads Workspace Card -->
+    <section class="leads-workspace">
       
-      <!-- Console Tab Navigation -->
-      <div class="console-tab-nav">
-        <button class="console-tab-btn active" data-target="panel-simulator">
-          <i class="fa-solid fa-flask"></i> Lead Simulator
-        </button>
-        <button class="console-tab-btn" data-target="panel-inspector">
-          <i class="fa-solid fa-terminal"></i> Webhook Inspector
-          <span class="log-indicator-dot" id="logDot"></span>
-        </button>
-        <button class="console-tab-btn" data-target="panel-loom">
-          <i class="fa-solid fa-video"></i> Loom & Demo
-        </button>
-        <button class="console-tab-btn" data-target="panel-config">
-          <i class="fa-solid fa-link"></i> Config
-        </button>
-      </div>
-
-      <!-- PANEL 1: Interactive Lead Simulator -->
-      <div class="console-view active" id="panel-simulator">
-        <div class="console-card-header">
-          <div>
-            <h4>Meta Lead Ads Dispatcher</h4>
-            <p>Generate authenticated Meta Instant Form submissions.</p>
+      <!-- Workspace Toolbar -->
+      <div class="workspace-toolbar">
+        <div class="toolbar-left">
+          <div class="search-input-group">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="leadSearchInput" placeholder="Search by name, email, phone, or campaign...">
+            <kbd class="shortcut-key">/</kbd>
           </div>
-          <span class="tag-status">Testing Mode</span>
-        </div>
 
-        <!-- Quick Scenario Selector -->
-        <div class="preset-strip">
-          <span class="preset-label">1-Click Scenarios:</span>
-          <div class="preset-grid">
-            <button class="preset-card active" data-preset="solar" type="button">
-              <span class="preset-icon">☀️</span>
-              <div class="preset-texts">
-                <strong>Solar Quote</strong>
-                <small>Residential Lead</small>
-              </div>
-            </button>
-            <button class="preset-card" data-preset="realestate" type="button">
-              <span class="preset-icon">🏙️</span>
-              <div class="preset-texts">
-                <strong>Real Estate</strong>
-                <small>Penthouse VIP</small>
-              </div>
-            </button>
-            <button class="preset-card" data-preset="b2b" type="button">
-              <span class="preset-icon">💼</span>
-              <div class="preset-texts">
-                <strong>Enterprise SaaS</strong>
-                <small>Cloud Demo</small>
-              </div>
-            </button>
-            <button class="preset-card" data-preset="auto" type="button">
-              <span class="preset-icon">🏎️</span>
-              <div class="preset-texts">
-                <strong>Auto Drive</strong>
-                <small>EV Reservation</small>
-              </div>
-            </button>
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All (<span id="countAll">0</span>)</button>
+            <button class="filter-btn" data-filter="meta">Meta Lead Ads</button>
+            <button class="filter-btn" data-filter="instant">Instant Forms</button>
           </div>
         </div>
 
-        <!-- Custom Form -->
-        <form id="simulatorForm" class="simulator-fields">
-          <div class="field-pair">
-            <div class="input-wrap">
-              <label>Full Name</label>
-              <input type="text" id="simName" required value="Alexander Morgan">
-            </div>
-            <div class="input-wrap">
-              <label>Phone Number</label>
-              <input type="tel" id="simPhone" required value="+1 (555) 839-2041">
-            </div>
-          </div>
-
-          <div class="input-wrap">
-            <label>Work Email</label>
-            <input type="email" id="simEmail" required value="alex.morgan@greenenergy.com">
-          </div>
-
-          <div class="field-pair">
-            <div class="input-wrap">
-              <label>Form Name</label>
-              <input type="text" id="simFormName" required value="Residential Solar Savings Calculator">
-            </div>
-            <div class="input-wrap">
-              <label>Campaign Source</label>
-              <input type="text" id="simSource" required value="Meta Instagram Feed - Spring 2026 Promo">
-            </div>
-          </div>
-
-          <div class="button-row">
-            <button type="submit" class="btn-action-primary" id="submitSimBtn">
-              <i class="fa-solid fa-paper-plane"></i> Dispatch Webhook Lead
-            </button>
-            <button type="button" class="btn-action-secondary" id="sendRawWebhookBtn" title="Dispatch Raw Meta JSON packet">
-              <i class="fa-solid fa-code"></i> Raw JSON
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- PANEL 2: Live Webhook & Packet Inspector -->
-      <div class="console-view" id="panel-inspector">
-        <div class="console-card-header">
-          <div>
-            <h4>Live Packet Inspector</h4>
-            <p>Real-time HTTP handshakes, Graph API fetches, and socket emits.</p>
-          </div>
-          <button class="btn-ghost-sm" id="clearLogsBtn"><i class="fa-solid fa-eraser"></i> Clear</button>
-        </div>
-
-        <div class="log-terminal" id="logStream">
-          <!-- Live log items -->
-        </div>
-      </div>
-
-      <!-- PANEL 3: Loom & Interview Demo Guide -->
-      <div class="console-view" id="panel-loom">
-        <div class="console-card-header">
-          <div>
-            <h4>Interview & Loom Script</h4>
-            <p>5-minute presentation workflow and talking points.</p>
-          </div>
-        </div>
-
-        <!-- Timer Card -->
-        <div class="loom-timer-card">
-          <div class="loom-timer-val" id="loomTimer">05:00</div>
-          <div class="loom-timer-btns">
-            <button class="timer-btn primary" id="startTimerBtn"><i class="fa-solid fa-play"></i> Start</button>
-            <button class="timer-btn" id="pauseTimerBtn"><i class="fa-solid fa-pause"></i> Pause</button>
-            <button class="timer-btn" id="resetTimerBtn"><i class="fa-solid fa-rotate-left"></i></button>
-          </div>
-        </div>
-
-        <div class="loom-steps-list">
-          <div class="step-item">
-            <span class="step-time">0:00 - 0:45</span>
-            <div class="step-content">
-              <strong>Architecture Overview:</strong>
-              <span>Meta Webhook $\rightarrow$ Backend Ingestion $\rightarrow$ Graph API $\rightarrow$ WebSocket Push $\rightarrow$ Mobile UI.</span>
-            </div>
-          </div>
-          <div class="step-item highlight">
-            <span class="step-time">0:45 - 2:30</span>
-            <div class="step-content">
-              <strong>The Live Ingestion Demo:</strong>
-              <span>Trigger lead in Meta Tool or Simulator $\rightarrow$ keep hands off screen as lead card slides in with zero lag.</span>
-            </div>
-          </div>
-          <div class="step-item">
-            <span class="step-time">2:30 - 3:45</span>
-            <div class="step-content">
-              <strong>Engineering Highlights:</strong>
-              <span>Explain payload security (Graph API necessity), deduplication Set, and socket reconnection resilience.</span>
-            </div>
+        <div class="toolbar-right">
+          <div class="quick-preset-bar">
+            <span class="preset-label">1-Click Test:</span>
+            <button class="btn-preset-pill" onclick="triggerQuickPreset('solar')">☀️ Solar</button>
+            <button class="btn-preset-pill" onclick="triggerQuickPreset('realestate')">🏡 Luxury Realty</button>
+            <button class="btn-preset-pill" onclick="triggerQuickPreset('b2b')">💼 SaaS Demo</button>
           </div>
         </div>
       </div>
 
-      <!-- PANEL 4: Endpoints & Config -->
-      <div class="console-view" id="panel-config">
-        <div class="console-card-header">
-          <div>
-            <h4>Meta Webhook Parameters</h4>
-            <p>Paste these into the Meta App Dashboard or ngrok tunnel.</p>
-          </div>
-        </div>
+      <!-- Leads Table Container -->
+      <div class="table-container">
+        <table class="leads-table">
+          <thead>
+            <tr>
+              <th>Lead Name & Contact</th>
+              <th>Campaign & Form</th>
+              <th>Channel Source</th>
+              <th>Received</th>
+              <th>Lead ID</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leadsTableBody">
+            <!-- Empty state row will appear here if 0 leads -->
+          </tbody>
+        </table>
 
-        <div class="config-pairs">
-          <div class="config-row">
-            <span class="config-label">Webhook Callback URL</span>
-            <div class="code-copy-row">
-              <code id="cfgUrl">https://&lt;your-tunnel&gt;.ngrok-free.app/webhook/meta</code>
-              <button class="copy-icon-btn" onclick="copyCode('cfgUrl')"><i class="fa-regular fa-copy"></i></button>
-            </div>
+        <!-- Empty State Container -->
+        <div class="empty-state" id="emptyStateContainer">
+          <div class="empty-icon-circle">
+            <i class="fa-brands fa-meta"></i>
           </div>
-
-          <div class="config-row">
-            <span class="config-label">Verify Token</span>
-            <div class="code-copy-row">
-              <code id="cfgToken">meta_lead_ads_secret_token_2026</code>
-              <button class="copy-icon-btn" onclick="copyCode('cfgToken')"><i class="fa-regular fa-copy"></i></button>
-            </div>
-          </div>
-
-          <div class="config-row">
-            <span class="config-label">Verification Mode</span>
-            <div class="code-copy-row">
-              <code>GET /webhook/meta (hub.challenge)</code>
-            </div>
-          </div>
+          <h3>Waiting for Inbound Leads</h3>
+          <p>Your webhook listener is live. Submit a test lead using Meta's Lead Testing Tool or click the button below to simulate an event.</p>
+          <button class="btn btn-primary" onclick="openSimulateModal()">
+            <i class="fa-solid fa-play"></i>
+            <span>Simulate Lead Event</span>
+          </button>
         </div>
       </div>
-    </aside>
 
-  </div>
+    </section>
 
-  <!-- Mobile Screen Simulator Modal -->
-  <div class="mobile-modal-backdrop" id="mobileModal">
-    <div class="mobile-device-shell">
-      <div class="device-notch"></div>
-      <div class="device-screen">
-        <div class="device-status-bar">
-          <span>9:41</span>
-          <div class="status-glyphs">
-            <i class="fa-solid fa-signal"></i>
-            <i class="fa-solid fa-wifi"></i>
-            <i class="fa-solid fa-battery-full"></i>
-          </div>
+  </main>
+
+  <!-- Slide-Over Lead Detail Drawer -->
+  <div class="drawer-backdrop" id="drawerBackdrop">
+    <div class="drawer-panel" id="drawerPanel">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <span class="drawer-eyebrow">Lead Intelligence & Trace</span>
+          <h3 id="drawerLeadName">Alexander Morgan</h3>
         </div>
-
-        <div class="device-app-header">
-          <div>
-            <h2>Inbound Leads</h2>
-            <div class="device-live-badge">
-              <span class="pulse-indicator"></span>
-              <span>Live Socket</span>
-            </div>
-          </div>
-          <span class="device-counter" id="mobileCountBadge">0</span>
-        </div>
-
-        <div class="device-scroll-list" id="mobileLeadsList">
-          <div class="device-empty" id="mobileEmpty">
-            <i class="fa-solid fa-inbox"></i>
-            <p>Waiting for Meta Lead Ads events...</p>
-          </div>
-        </div>
+        <button class="btn-close-drawer" id="closeDrawerBtn"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <button class="device-close-fab" id="closeMobileModalBtn"><i class="fa-solid fa-xmark"></i></button>
+
+      <div class="drawer-content" id="drawerContent">
+        <!-- Lead details injected via JS -->
+      </div>
     </div>
   </div>
 
-  <!-- Toast Notification Stack -->
-  <div class="toast-stack" id="toastStack"></div>
+  <!-- Simulate Lead Modal -->
+  <div class="modal-backdrop" id="simulateModalBackdrop">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon"><i class="fa-solid fa-flask"></i></div>
+          <div>
+            <h3>Simulate Meta Lead Ad Event</h3>
+            <p>Emulate the exact payload dispatched by Meta's Lead Testing Tool.</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="closeSimulateModalBtn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="simulateLeadForm" class="modal-form">
+        <div class="preset-selection-row">
+          <label class="form-label">Pre-configured Scenarios:</label>
+          <div class="preset-card-group">
+            <div class="preset-card active" data-preset="solar">
+              <strong>☀️ Solar Quote</strong>
+              <small>Residential savings</small>
+            </div>
+            <div class="preset-card" data-preset="realestate">
+              <strong>🏡 Luxury Realty</strong>
+              <small>Penthouse inquiry</small>
+            </div>
+            <div class="preset-card" data-preset="b2b">
+              <strong>💼 SaaS B2B</strong>
+              <small>Cloud demo</small>
+            </div>
+            <div class="preset-card" data-preset="auto">
+              <strong>🚗 Auto Expo</strong>
+              <small>Test drive</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="simName">Full Name</label>
+            <input type="text" id="simName" required value="Alexander Morgan" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="simPhone">Phone Number</label>
+            <input type="tel" id="simPhone" required value="+1 (555) 839-2041" class="form-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="simEmail">Email Address</label>
+          <input type="email" id="simEmail" required value="alex.morgan@greenenergy.com" class="form-input">
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="simFormName">Meta Instant Form Name</label>
+            <input type="text" id="simFormName" required value="Residential Solar Savings Calculator" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="simSource">Campaign / Placement</label>
+            <input type="text" id="simSource" required value="Meta Instagram Feed - Spring 2026 Promo" class="form-input">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="sendRawJsonBtn">
+            <i class="fa-solid fa-code"></i> Send Raw Meta JSON
+          </button>
+          <button type="submit" class="btn btn-primary" id="submitSimulateBtn">
+            <i class="fa-solid fa-paper-plane"></i> Dispatch Webhook
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mobile Device Preview Modal -->
+  <div class="modal-backdrop" id="mobilePreviewModal">
+    <div class="device-modal-window">
+      <div class="device-phone-frame">
+        <div class="device-speaker-notch"></div>
+        <div class="device-screen">
+          <div class="device-top-bar">
+            <span>9:41</span>
+            <div class="device-icons">
+              <i class="fa-solid fa-signal"></i>
+              <i class="fa-solid fa-wifi"></i>
+              <i class="fa-solid fa-battery-full"></i>
+            </div>
+          </div>
+
+          <div class="device-app-header">
+            <div>
+              <h3>Inbound Leads</h3>
+              <div class="device-status-badge">
+                <span class="status-indicator"></span>
+                <span>Live Socket</span>
+              </div>
+            </div>
+            <span class="device-count-pill" id="mobileCountPill">0</span>
+          </div>
+
+          <div class="device-leads-list" id="mobileLeadsContainer">
+            <div class="device-empty" id="mobileEmptyState">
+              <i class="fa-solid fa-inbox"></i>
+              <p>Waiting for Meta Lead Ads events...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-close-device" id="closeMobilePreviewBtn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <!-- Bottom Log Terminal Drawer -->
+  <div class="bottom-terminal-drawer" id="bottomTerminal">
+    <div class="terminal-header">
+      <div class="terminal-title">
+        <i class="fa-solid fa-terminal"></i>
+        <span>Live Webhook & Packet Inspector</span>
+        <span class="badge-tag">GET & POST /webhook/meta</span>
+      </div>
+      <div class="terminal-actions">
+        <button class="btn-terminal-sm" id="clearTerminalBtn"><i class="fa-solid fa-eraser"></i> Clear</button>
+        <button class="btn-terminal-sm" id="closeTerminalBtn"><i class="fa-solid fa-chevron-down"></i></button>
+      </div>
+    </div>
+    <div class="terminal-body" id="terminalLogsContainer">
+      <!-- Logs will be streamed here -->
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div class="toast-hub" id="toastHub"></div>
 
   <!-- App Script -->
   <script src="/js/app.js"></script>
