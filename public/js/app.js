@@ -62,12 +62,6 @@ const closeSimulatorBtn = document.getElementById('closeSimulatorBtn');
 const configModal = document.getElementById('configModal');
 const openConfigModalBtn = document.getElementById('openConfigModalBtn');
 const closeConfigModalBtn = document.getElementById('closeConfigModalBtn');
-const mobileModal = document.getElementById('mobileModal');
-const navMobileViewBtn = document.getElementById('navMobileViewBtn');
-const closeMobileModalBtn = document.getElementById('closeMobileModalBtn');
-const phoneFeedScroll = document.getElementById('phoneFeedScroll');
-const phoneEmpty = document.getElementById('phoneEmpty');
-const mobileCounter = document.getElementById('mobileCounter');
 
 // Bottom Terminal
 const terminalDrawer = document.getElementById('terminalDrawer');
@@ -214,13 +208,11 @@ function updateCounts() {
   kpiTotalCount.textContent = count;
   sidebarLeadsCount.textContent = count;
   pillCountAll.textContent = count;
-  mobileCounter.textContent = count;
 }
 
 // Render Table Row (Meta Style)
 function renderLeadTableRow(lead, isNew = false) {
   if (emptyState) emptyState.style.display = 'none';
-  if (phoneEmpty) phoneEmpty.style.display = 'none';
 
   const initials = lead.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'LD';
   const isInstagram = (lead.source || '').toLowerCase().includes('instagram');
@@ -237,8 +229,8 @@ function renderLeadTableRow(lead, isNew = false) {
         <div>
           <span class="lead-name">${escapeHtml(lead.name)}</span>
           <div class="lead-subcontacts">
-            <span><i class="fa-regular fa-envelope"></i> ${escapeHtml(lead.email)}</span>
-            <span><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.phone)}</span>
+            <a href="mailto:${escapeHtml(lead.email)}"><i class="fa-regular fa-envelope"></i> ${escapeHtml(lead.email)}</a>
+            <a href="tel:${escapeHtml(lead.phone)}"><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.phone)}</a>
           </div>
         </div>
       </div>
@@ -271,28 +263,16 @@ function renderLeadTableRow(lead, isNew = false) {
   `;
 
   tr.addEventListener('click', (e) => {
-    if (!e.target.closest('button')) {
+    if (!e.target.closest('button') && !e.target.closest('a')) {
       openLeadDrawer(lead.leadId);
     }
   });
 
   leadsTableBody.insertBefore(tr, leadsTableBody.firstChild);
 
-  // Render on Mobile Device
-  const phoneCard = document.createElement('div');
-  phoneCard.className = `phone-lead-card ${isNew ? 'row-new-arrival' : ''}`;
-  phoneCard.innerHTML = `
-    <h5>${escapeHtml(lead.name)}</h5>
-    <p><i class="fa-regular fa-envelope"></i> ${escapeHtml(lead.email)}</p>
-    <p><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.phone)}</p>
-    <span class="phone-lead-time"><i class="fa-regular fa-clock"></i> ${timeAgo(lead.receivedAt)}</span>
-  `;
-  phoneFeedScroll.insertBefore(phoneCard, phoneFeedScroll.firstChild);
-
   if (isNew) {
     setTimeout(() => {
       tr.classList.remove('row-new-arrival');
-      phoneCard.classList.remove('row-new-arrival');
     }, 3500);
   }
 }
@@ -300,16 +280,13 @@ function renderLeadTableRow(lead, isNew = false) {
 // Render All Leads
 function renderAllLeadRows() {
   leadsTableBody.innerHTML = '';
-  phoneFeedScroll.innerHTML = '';
 
   if (leadsData.length === 0) {
     emptyState.style.display = 'flex';
-    phoneEmpty.style.display = 'block';
     return;
   }
 
   emptyState.style.display = 'none';
-  phoneEmpty.style.display = 'none';
   leadsData.forEach(l => renderLeadTableRow(l, false));
 }
 
@@ -329,11 +306,11 @@ window.openLeadDrawer = function(leadId) {
         </div>
         <div class="drawer-field-card">
           <label>Phone Number</label>
-          <span>${escapeHtml(lead.phone)}</span>
+          <span><a href="tel:${escapeHtml(lead.phone)}" style="color:#0866ff;text-decoration:none;">${escapeHtml(lead.phone)}</a></span>
         </div>
         <div class="drawer-field-card full">
           <label>Email Address</label>
-          <span>${escapeHtml(lead.email)}</span>
+          <span><a href="mailto:${escapeHtml(lead.email)}" style="color:#0866ff;text-decoration:none;">${escapeHtml(lead.email)}</a></span>
         </div>
       </div>
     </div>
@@ -530,16 +507,6 @@ configModal.addEventListener('click', (e) => {
   if (e.target === configModal) configModal.classList.remove('active');
 });
 
-// Mobile Preview Modal
-navMobileViewBtn.addEventListener('click', (e) => {
-  e.preventDefault();
-  mobileModal.classList.add('active');
-});
-closeMobileModalBtn.addEventListener('click', () => mobileModal.classList.remove('active'));
-mobileModal.addEventListener('click', (e) => {
-  if (e.target === mobileModal) mobileModal.classList.remove('active');
-});
-
 // Bottom Terminal Controls
 navLogsBtn.addEventListener('click', (e) => {
   e.preventDefault();
@@ -610,10 +577,6 @@ setInterval(() => {
   document.querySelectorAll('.time-stamp[data-time]').forEach(el => {
     const t = el.getAttribute('data-time');
     el.textContent = timeAgo(t);
-  });
-  document.querySelectorAll('.phone-lead-time[data-time]').forEach(el => {
-    const t = el.getAttribute('data-time');
-    el.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeAgo(t)}`;
   });
 }, 10000);
 
