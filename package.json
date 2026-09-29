@@ -1,0 +1,17 @@
+{
+  "name": "meta-lead-ads-realtime",
+  "version": "1.0.0",
+  "description": "Real-time Meta Lead Ads Webhook pipeline and live Leads dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "web": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
