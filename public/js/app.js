@@ -1,5 +1,5 @@
 // ==========================================================================
-// PulseLead — Enterprise Meta Lead Ads Real-Time Controller
+// Meta Lead Center — Real-Time Controller (Meta Business Suite Style)
 // ==========================================================================
 
 let socket;
@@ -8,72 +8,77 @@ let logsData = [];
 let audioEnabled = true;
 let activeFilter = 'all';
 
-// Presets Data
+// Preset Scenarios
 const PRESETS = {
   solar: {
     name: 'Alexander Morgan',
     email: 'alex.morgan@greenenergy.com',
     phone: '+1 (555) 839-2041',
     formName: 'Residential Solar Savings Calculator',
-    source: 'Meta Instagram Feed'
+    source: 'Instagram Feed Ad'
   },
   realestate: {
     name: 'Sophia Chen',
     email: 'sophia.chen@luxuryproperties.io',
     phone: '+1 (555) 492-1188',
     formName: 'Waterfront Penthouse VIP Showing',
-    source: 'Meta Facebook Feed'
+    source: 'Facebook Feed Ad'
   },
   b2b: {
     name: 'Marcus Vance',
     email: 'marcus.v@cloudscale.tech',
     phone: '+1 (555) 720-9452',
     formName: 'Enterprise Cloud Migration Whitepaper',
-    source: 'Meta Ads - B2B Audience'
+    source: 'Instagram Story Ad'
   },
   auto: {
     name: 'Elena Rostova',
     email: 'elena.rostova@premierauto.com',
     phone: '+1 (555) 319-6402',
     formName: '2026 Electric SUV Test Drive',
-    source: 'Meta Instant Lead Form'
+    source: 'Facebook Instant Form'
   }
 };
 
 // DOM Elements
-const statTotalCount = document.getElementById('statTotalCount');
-const countAll = document.getElementById('countAll');
+const kpiTotalCount = document.getElementById('kpiTotalCount');
+const sidebarLeadsCount = document.getElementById('sidebarLeadsCount');
+const pillCountAll = document.getElementById('pillCountAll');
 const leadsTableBody = document.getElementById('leadsTableBody');
-const emptyStateContainer = document.getElementById('emptyStateContainer');
-const leadSearchInput = document.getElementById('leadSearchInput');
-const logsCountBadge = document.getElementById('logsCountBadge');
+const emptyState = document.getElementById('emptyState');
+const searchInput = document.getElementById('searchInput');
 
 // Drawer Elements
-const drawerBackdrop = document.getElementById('drawerBackdrop');
-const drawerContent = document.getElementById('drawerContent');
+const drawerOverlay = document.getElementById('drawerOverlay');
+const drawerPanel = document.getElementById('drawerPanel');
 const drawerLeadName = document.getElementById('drawerLeadName');
+const drawerBody = document.getElementById('drawerBody');
 const closeDrawerBtn = document.getElementById('closeDrawerBtn');
 
 // Modals
-const simulateModalBackdrop = document.getElementById('simulateModalBackdrop');
-const openSimulateModalBtn = document.getElementById('openSimulateModalBtn');
-const closeSimulateModalBtn = document.getElementById('closeSimulateModalBtn');
-const mobilePreviewModal = document.getElementById('mobilePreviewModal');
-const openMobileModalBtn = document.getElementById('openMobileModalBtn');
-const closeMobilePreviewBtn = document.getElementById('closeMobilePreviewBtn');
-const mobileLeadsContainer = document.getElementById('mobileLeadsContainer');
-const mobileEmptyState = document.getElementById('mobileEmptyState');
-const mobileCountPill = document.getElementById('mobileCountPill');
+const simulatorModal = document.getElementById('simulatorModal');
+const openSimulatorBtn = document.getElementById('openSimulatorBtn');
+const closeSimulatorBtn = document.getElementById('closeSimulatorBtn');
+const configModal = document.getElementById('configModal');
+const openConfigModalBtn = document.getElementById('openConfigModalBtn');
+const closeConfigModalBtn = document.getElementById('closeConfigModalBtn');
+const mobileModal = document.getElementById('mobileModal');
+const navMobileViewBtn = document.getElementById('navMobileViewBtn');
+const closeMobileModalBtn = document.getElementById('closeMobileModalBtn');
+const phoneFeedScroll = document.getElementById('phoneFeedScroll');
+const phoneEmpty = document.getElementById('phoneEmpty');
+const mobileCounter = document.getElementById('mobileCounter');
 
 // Bottom Terminal
-const bottomTerminal = document.getElementById('bottomTerminal');
-const toggleLogsBtn = document.getElementById('toggleLogsBtn');
-const closeTerminalBtn = document.getElementById('closeTerminalBtn');
-const clearTerminalBtn = document.getElementById('clearTerminalBtn');
-const terminalLogsContainer = document.getElementById('terminalLogsContainer');
+const terminalDrawer = document.getElementById('terminalDrawer');
+const navLogsBtn = document.getElementById('navLogsBtn');
+const closeLogsBtn = document.getElementById('closeLogsBtn');
+const clearLogsBtn = document.getElementById('clearLogsBtn');
+const terminalLogStream = document.getElementById('terminalLogStream');
+const sidebarLogDot = document.getElementById('sidebarLogDot');
 
-// Audio Chime Synthesizer
-function playLeadChime() {
+// Audio Synthesizer for Lead Chime
+function playMetaChime() {
   if (!audioEnabled) return;
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -83,28 +88,28 @@ function playLeadChime() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(659.25, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.12);
-    gain.gain.setValueAtTime(0.18, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880.00, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.65);
+    osc.stop(ctx.currentTime + 0.55);
   } catch (e) {
     console.warn('Audio notice:', e);
   }
 }
 
-// Toast Hub
-function showToast(message, type = 'info') {
-  const hub = document.getElementById('toastHub');
+// Meta Toast System
+function showMetaToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
-  toast.className = `toast-item ${type}`;
-  const icon = type === 'success' ? 'fa-circle-check' : (type === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-info');
+  toast.className = `meta-toast ${type}`;
+  const icon = type === 'success' ? 'fa-circle-check text-green' : (type === 'warn' ? 'fa-triangle-exclamation text-meta' : 'fa-circle-info text-meta');
   toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
-  hub.appendChild(toast);
+  container.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(10px)';
@@ -121,7 +126,7 @@ function timeAgo(dateString) {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
-// XSS Sanitizer
+// Escape HTML
 function escapeHtml(str) {
   if (!str) return '';
   return String(str)
@@ -132,100 +137,106 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Socket Initialization
+// Initialize Socket.IO
 function initSocket() {
   socket = io();
 
   socket.on('connect', () => {
-    showToast('Connected to live webhook engine', 'success');
+    showMetaToast('Connected to Meta Webhook stream', 'success');
   });
 
   socket.on('disconnect', () => {
-    showToast('Real-time connection lost', 'warn');
+    showMetaToast('Disconnected from server', 'warn');
   });
 
-  // MAIN REAL-TIME INGESTION LISTENER
+  // REAL-TIME NEW LEAD EVENT
   socket.on('new_lead', (lead) => {
     leadsData.unshift(lead);
-    updateCounters();
-    renderLeadRow(lead, true);
-    playLeadChime();
-    showToast(`New Lead Ingested: ${lead.name}`, 'success');
+    updateCounts();
+    renderLeadTableRow(lead, true);
+    playMetaChime();
+    showMetaToast(`New Lead Received: ${lead.name}`, 'success');
   });
 
-  // Log events
+  // Log event
   socket.on('log_event', (log) => {
     logsData.unshift(log);
-    renderTerminalEntry(log, true);
-    logsCountBadge.textContent = logsData.length;
+    renderLogLine(log, true);
+    if (sidebarLogDot) sidebarLogDot.style.display = 'block';
   });
 
-  // Reset event
+  // Leads cleared
   socket.on('leads_cleared', () => {
     leadsData = [];
     logsData = [];
-    updateCounters();
-    renderAllLeads();
-    terminalLogsContainer.innerHTML = '';
-    logsCountBadge.textContent = '0';
-    showToast('Workspace reset completed', 'info');
+    updateCounts();
+    renderAllLeadRows();
+    terminalLogStream.innerHTML = '';
+    showMetaToast('All leads and logs reset', 'info');
   });
 }
 
-// Initial Hydration
+// Load Initial Data
 async function loadInitialData() {
   try {
-    const [leadsRes, logsRes] = await Promise.all([
+    const [leadsRes, logsRes, cfgRes] = await Promise.all([
       fetch('/leads'),
-      fetch('/api/logs')
+      fetch('/api/logs'),
+      fetch('/api/config')
     ]);
 
     const leadsJson = await leadsRes.json();
     if (leadsJson.success && Array.isArray(leadsJson.data)) {
       leadsData = leadsJson.data;
-      updateCounters();
-      renderAllLeads();
+      updateCounts();
+      renderAllLeadRows();
     }
 
     const logsJson = await logsRes.json();
     if (logsJson.success && Array.isArray(logsJson.data)) {
       logsData = logsJson.data;
-      terminalLogsContainer.innerHTML = '';
-      logsData.forEach(l => renderTerminalEntry(l, false));
-      logsCountBadge.textContent = logsData.length;
+      terminalLogStream.innerHTML = '';
+      logsData.forEach(l => renderLogLine(l, false));
+    }
+
+    const cfgJson = await cfgRes.json();
+    if (cfgJson && cfgJson.verifyToken) {
+      document.getElementById('cfgVerifyToken').textContent = cfgJson.verifyToken;
     }
   } catch (err) {
-    console.error('Failed initial hydration:', err);
+    console.error('Initial load failed:', err);
   }
 }
 
 // Update Counters
-function updateCounters() {
+function updateCounts() {
   const count = leadsData.length;
-  statTotalCount.textContent = count;
-  countAll.textContent = count;
-  mobileCountPill.textContent = count;
+  kpiTotalCount.textContent = count;
+  sidebarLeadsCount.textContent = count;
+  pillCountAll.textContent = count;
+  mobileCounter.textContent = count;
 }
 
-// Render Lead Table Row
-function renderLeadRow(lead, isNew = false) {
-  if (emptyStateContainer) emptyStateContainer.style.display = 'none';
-  if (mobileEmptyState) mobileEmptyState.style.display = 'none';
+// Render Table Row (Meta Style)
+function renderLeadTableRow(lead, isNew = false) {
+  if (emptyState) emptyState.style.display = 'none';
+  if (phoneEmpty) phoneEmpty.style.display = 'none';
 
   const initials = lead.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'LD';
+  const isInstagram = (lead.source || '').toLowerCase().includes('instagram');
 
   const tr = document.createElement('tr');
-  tr.className = isNew ? 'lead-row-animated' : '';
+  tr.className = isNew ? 'row-new-arrival' : '';
   tr.setAttribute('data-id', lead.leadId);
   tr.setAttribute('data-source', lead.source || '');
 
   tr.innerHTML = `
     <td>
-      <div class="lead-profile-cell">
+      <div class="lead-identity">
         <div class="lead-avatar">${initials}</div>
         <div>
-          <span class="lead-name-text">${escapeHtml(lead.name)}</span>
-          <div class="lead-contact-line">
+          <span class="lead-name">${escapeHtml(lead.name)}</span>
+          <div class="lead-subcontacts">
             <span><i class="fa-regular fa-envelope"></i> ${escapeHtml(lead.email)}</span>
             <span><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.phone)}</span>
           </div>
@@ -233,25 +244,32 @@ function renderLeadRow(lead, isNew = false) {
       </div>
     </td>
     <td>
-      <span class="form-badge-pill"><i class="fa-solid fa-rectangle-list text-muted"></i> ${escapeHtml(lead.formName || 'Meta Form')}</span>
+      <span class="form-tag"><i class="fa-solid fa-rectangle-list text-secondary"></i> ${escapeHtml(lead.formName || 'Meta Instant Form')}</span>
     </td>
     <td>
-      <span class="channel-tag-pill"><i class="fa-brands fa-meta"></i> ${escapeHtml(lead.source || 'Meta Lead Ads')}</span>
+      <span class="platform-pill ${isInstagram ? 'ig' : 'fb'}">
+        <i class="fa-brands ${isInstagram ? 'fa-instagram' : 'fa-facebook'}"></i>
+        ${escapeHtml(lead.source || 'Meta Lead Ads')}
+      </span>
     </td>
     <td>
-      <span class="time-cell" data-time="${lead.receivedAt}"><i class="fa-regular fa-clock"></i> ${timeAgo(lead.receivedAt)}</span>
+      <span class="stage-pill">
+        <i class="fa-solid fa-circle" style="font-size: 6px;"></i> New Lead
+      </span>
     </td>
     <td>
-      <span class="id-code-tag">${escapeHtml(lead.leadId)}</span>
+      <span class="time-stamp" data-time="${lead.receivedAt}">${timeAgo(lead.receivedAt)}</span>
+    </td>
+    <td>
+      <span class="lead-id-pill">${escapeHtml(lead.leadId)}</span>
     </td>
     <td class="text-right">
-      <button class="table-action-btn" onclick="openLeadDrawer('${lead.leadId}')">
-        <i class="fa-solid fa-arrow-right"></i> Details
+      <button class="btn-view-lead" onclick="openLeadDrawer('${lead.leadId}')">
+        View Details
       </button>
     </td>
   `;
 
-  // Row click opens drawer
   tr.addEventListener('click', (e) => {
     if (!e.target.closest('button')) {
       openLeadDrawer(lead.leadId);
@@ -261,75 +279,81 @@ function renderLeadRow(lead, isNew = false) {
   leadsTableBody.insertBefore(tr, leadsTableBody.firstChild);
 
   // Render on Mobile Device
-  const mobileCard = document.createElement('div');
-  mobileCard.className = `device-card-item ${isNew ? 'flash-new' : ''}`;
-  mobileCard.innerHTML = `
+  const phoneCard = document.createElement('div');
+  phoneCard.className = `phone-lead-card ${isNew ? 'row-new-arrival' : ''}`;
+  phoneCard.innerHTML = `
     <h5>${escapeHtml(lead.name)}</h5>
     <p><i class="fa-regular fa-envelope"></i> ${escapeHtml(lead.email)}</p>
     <p><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.phone)}</p>
-    <span class="device-time-tag"><i class="fa-regular fa-clock"></i> ${timeAgo(lead.receivedAt)}</span>
+    <span class="phone-lead-time"><i class="fa-regular fa-clock"></i> ${timeAgo(lead.receivedAt)}</span>
   `;
-  mobileLeadsContainer.insertBefore(mobileCard, mobileLeadsContainer.firstChild);
+  phoneFeedScroll.insertBefore(phoneCard, phoneFeedScroll.firstChild);
 
   if (isNew) {
     setTimeout(() => {
-      tr.classList.remove('lead-row-animated');
-      mobileCard.classList.remove('flash-new');
+      tr.classList.remove('row-new-arrival');
+      phoneCard.classList.remove('row-new-arrival');
     }, 3500);
   }
 }
 
 // Render All Leads
-function renderAllLeads() {
+function renderAllLeadRows() {
   leadsTableBody.innerHTML = '';
-  mobileLeadsContainer.innerHTML = '';
+  phoneFeedScroll.innerHTML = '';
 
   if (leadsData.length === 0) {
-    emptyStateContainer.style.display = 'flex';
-    mobileEmptyState.style.display = 'block';
+    emptyState.style.display = 'flex';
+    phoneEmpty.style.display = 'block';
     return;
   }
 
-  emptyStateContainer.style.display = 'none';
-  mobileEmptyState.style.display = 'none';
-  leadsData.forEach(l => renderLeadRow(l, false));
+  emptyState.style.display = 'none';
+  phoneEmpty.style.display = 'none';
+  leadsData.forEach(l => renderLeadTableRow(l, false));
 }
 
-// Open Lead Drawer
+// Open Lead Drawer (Meta Style)
 window.openLeadDrawer = function(leadId) {
   const lead = leadsData.find(l => l.leadId === leadId);
   if (!lead) return;
 
   drawerLeadName.textContent = lead.name;
-  drawerContent.innerHTML = `
+  drawerBody.innerHTML = `
     <div>
-      <span class="drawer-section-title">Contact & Attribution</span>
-      <div class="drawer-key-val-grid">
-        <div class="drawer-item">
+      <span class="drawer-section-heading">Contact Information</span>
+      <div class="drawer-field-grid">
+        <div class="drawer-field-card">
           <label>Full Name</label>
           <span>${escapeHtml(lead.name)}</span>
         </div>
-        <div class="drawer-item">
+        <div class="drawer-field-card">
           <label>Phone Number</label>
           <span>${escapeHtml(lead.phone)}</span>
         </div>
-        <div class="drawer-item full-width">
+        <div class="drawer-field-card full">
           <label>Email Address</label>
           <span>${escapeHtml(lead.email)}</span>
         </div>
-        <div class="drawer-item">
-          <label>Campaign Source</label>
+      </div>
+    </div>
+
+    <div>
+      <span class="drawer-section-heading">Meta Ad Attribution</span>
+      <div class="drawer-field-grid">
+        <div class="drawer-field-card">
+          <label>Campaign / Placement</label>
           <span>${escapeHtml(lead.source)}</span>
         </div>
-        <div class="drawer-item">
-          <label>Meta Form Name</label>
+        <div class="drawer-field-card">
+          <label>Instant Form Name</label>
           <span>${escapeHtml(lead.formName)}</span>
         </div>
-        <div class="drawer-item">
+        <div class="drawer-field-card">
           <label>Leadgen ID</label>
           <code>${escapeHtml(lead.leadId)}</code>
         </div>
-        <div class="drawer-item">
+        <div class="drawer-field-card">
           <label>Received Timestamp</label>
           <span>${new Date(lead.receivedAt).toLocaleString()}</span>
         </div>
@@ -338,55 +362,55 @@ window.openLeadDrawer = function(leadId) {
 
     <div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span class="drawer-section-title" style="margin-bottom: 0;">Raw Normalized Payload</span>
-        <button class="table-action-btn" onclick="copyRawJson('${lead.leadId}')">
+        <span class="drawer-section-heading" style="margin-bottom: 0;">Graph API Normalized Payload</span>
+        <button class="btn-view-lead" onclick="copyDrawerJson('${lead.leadId}')">
           <i class="fa-regular fa-copy"></i> Copy JSON
         </button>
       </div>
-      <pre class="drawer-json-block" id="rawJson_${lead.leadId}"><code>${escapeHtml(JSON.stringify(lead, null, 2))}</code></pre>
+      <pre class="drawer-json-box" id="json_${lead.leadId}"><code>${escapeHtml(JSON.stringify(lead, null, 2))}</code></pre>
     </div>
   `;
 
-  drawerBackdrop.classList.add('active');
+  drawerOverlay.classList.add('active');
 };
 
-// Copy Raw JSON helper
-window.copyRawJson = function(leadId) {
-  const el = document.getElementById(`rawJson_${leadId}`);
+// Copy JSON helper
+window.copyDrawerJson = function(leadId) {
+  const el = document.getElementById(`json_${leadId}`);
   if (el) {
     navigator.clipboard.writeText(el.textContent).then(() => {
-      showToast('Payload copied to clipboard', 'info');
+      showMetaToast('JSON copied to clipboard', 'info');
     });
   }
 };
 
 // Close Drawer
-closeDrawerBtn.addEventListener('click', () => drawerBackdrop.classList.remove('active'));
-drawerBackdrop.addEventListener('click', (e) => {
-  if (e.target === drawerBackdrop) drawerBackdrop.classList.remove('active');
+closeDrawerBtn.addEventListener('click', () => drawerOverlay.classList.remove('active'));
+drawerOverlay.addEventListener('click', (e) => {
+  if (e.target === drawerOverlay) drawerOverlay.classList.remove('active');
 });
 
-// Render Terminal Log Entry
-function renderTerminalEntry(log, prepend = true) {
+// Render Log Line in Terminal
+function renderLogLine(log, prepend = true) {
   const div = document.createElement('div');
-  div.className = 'term-entry';
+  div.className = 'term-line';
   const t = new Date(log.timestamp).toLocaleTimeString();
   div.innerHTML = `
-    <span class="term-t">[${t}]</span>
-    <span class="term-tag ${log.type}">${log.type}</span>
-    <span class="term-msg">${escapeHtml(log.message)}</span>
+    <span class="term-timestamp">[${t}]</span>
+    <span class="term-badge ${log.type}">${log.type}</span>
+    <span class="term-text">${escapeHtml(log.message)}</span>
   `;
 
   if (prepend) {
-    terminalLogsContainer.insertBefore(div, terminalLogsContainer.firstChild);
+    terminalLogStream.insertBefore(div, terminalLogStream.firstChild);
   } else {
-    terminalLogsContainer.appendChild(div);
+    terminalLogStream.appendChild(div);
   }
 }
 
-// Quick Preset Trigger from Top Bar
-window.triggerQuickPreset = async function(presetKey) {
-  const p = PRESETS[presetKey] || PRESETS.solar;
+// Quick Preset from Toolbar
+window.quickSubmit = async function(key) {
+  const p = PRESETS[key] || PRESETS.solar;
   try {
     const res = await fetch('/api/simulate-lead', {
       method: 'POST',
@@ -395,26 +419,31 @@ window.triggerQuickPreset = async function(presetKey) {
     });
     await res.json();
   } catch (err) {
-    showToast('Simulation error: ' + err.message, 'warn');
+    showMetaToast('Simulation failed: ' + err.message, 'warn');
   }
 };
 
-// Simulate Modal Controls
-window.openSimulateModal = function() {
-  simulateModalBackdrop.classList.add('active');
+// Modal Controls
+window.openSimulatorModal = function() {
+  simulatorModal.classList.add('active');
 };
-openSimulateModalBtn.addEventListener('click', openSimulateModal);
-closeSimulateModalBtn.addEventListener('click', () => simulateModalBackdrop.classList.remove('active'));
-simulateModalBackdrop.addEventListener('click', (e) => {
-  if (e.target === simulateModalBackdrop) simulateModalBackdrop.classList.remove('active');
+openSimulatorBtn.addEventListener('click', openSimulatorModal);
+closeSimulatorBtn.addEventListener('click', () => simulatorModal.classList.remove('active'));
+simulatorModal.addEventListener('click', (e) => {
+  if (e.target === simulatorModal) simulatorModal.classList.remove('active');
+});
+
+document.getElementById('navTestingToolBtn').addEventListener('click', (e) => {
+  e.preventDefault();
+  openSimulatorModal();
 });
 
 // Preset Card Click in Modal
-document.querySelectorAll('.preset-card').forEach(card => {
-  card.addEventListener('click', () => {
-    document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
-    card.classList.add('active');
-    const key = card.getAttribute('data-preset');
+document.querySelectorAll('.scenario-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.scenario-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const key = pill.getAttribute('data-preset');
     const p = PRESETS[key];
     if (p) {
       document.getElementById('simName').value = p.name;
@@ -426,12 +455,12 @@ document.querySelectorAll('.preset-card').forEach(card => {
   });
 });
 
-// Simulate Form Submit
-document.getElementById('simulateLeadForm').addEventListener('submit', async (e) => {
+// Simulator Form Submit
+document.getElementById('simulatorForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const btn = document.getElementById('submitSimulateBtn');
+  const btn = document.getElementById('dispatchSubmitBtn');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Emitting...';
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatched...';
 
   const payload = {
     name: document.getElementById('simName').value,
@@ -448,18 +477,18 @@ document.getElementById('simulateLeadForm').addEventListener('submit', async (e)
       body: JSON.stringify(payload)
     });
     await res.json();
-    simulateModalBackdrop.classList.remove('active');
+    simulatorModal.classList.remove('active');
   } catch (err) {
-    showToast('Simulation error: ' + err.message, 'warn');
+    showMetaToast('Simulation failed: ' + err.message, 'warn');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Dispatch Webhook';
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Dispatch Test Lead';
   }
 });
 
-// Send Raw Meta JSON
-document.getElementById('sendRawJsonBtn').addEventListener('click', async () => {
-  const randId = 'meta_lead_' + Math.floor(10000000 + Math.random() * 90000000);
+// Raw JSON dispatch
+document.getElementById('sendRawMetaJsonBtn').addEventListener('click', async () => {
+  const randId = 'meta_test_' + Math.floor(10000000 + Math.random() * 90000000);
   const payload = {
     object: 'page',
     entry: [
@@ -487,47 +516,60 @@ document.getElementById('sendRawJsonBtn').addEventListener('click', async () => 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    showToast(`Dispatched Meta JSON packet (${randId})`, 'success');
-    simulateModalBackdrop.classList.remove('active');
+    showMetaToast(`Dispatched raw Meta packet (${randId})`, 'success');
+    simulatorModal.classList.remove('active');
   } catch (err) {
-    showToast('Webhook failed: ' + err.message, 'warn');
+    showMetaToast('Webhook failed: ' + err.message, 'warn');
   }
 });
 
-// Mobile Preview Modal Controls
-openMobileModalBtn.addEventListener('click', () => mobilePreviewModal.classList.add('active'));
-closeMobilePreviewBtn.addEventListener('click', () => mobilePreviewModal.classList.remove('active'));
-mobilePreviewModal.addEventListener('click', (e) => {
-  if (e.target === mobilePreviewModal) mobilePreviewModal.classList.remove('active');
+// Config Modal
+openConfigModalBtn.addEventListener('click', () => configModal.classList.add('active'));
+closeConfigModalBtn.addEventListener('click', () => configModal.classList.remove('active'));
+configModal.addEventListener('click', (e) => {
+  if (e.target === configModal) configModal.classList.remove('active');
+});
+
+// Mobile Preview Modal
+navMobileViewBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  mobileModal.classList.add('active');
+});
+closeMobileModalBtn.addEventListener('click', () => mobileModal.classList.remove('active'));
+mobileModal.addEventListener('click', (e) => {
+  if (e.target === mobileModal) mobileModal.classList.remove('active');
 });
 
 // Bottom Terminal Controls
-toggleLogsBtn.addEventListener('click', () => bottomTerminal.classList.toggle('active'));
-closeTerminalBtn.addEventListener('click', () => bottomTerminal.classList.remove('active'));
-clearTerminalBtn.addEventListener('click', () => {
-  terminalLogsContainer.innerHTML = '';
+navLogsBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  terminalDrawer.classList.toggle('active');
+  if (sidebarLogDot) sidebarLogDot.style.display = 'none';
+});
+closeLogsBtn.addEventListener('click', () => terminalDrawer.classList.remove('active'));
+clearLogsBtn.addEventListener('click', () => {
+  terminalLogStream.innerHTML = '';
   logsData = [];
-  logsCountBadge.textContent = '0';
 });
 
 // Reset Data
-document.getElementById('resetDataBtn').addEventListener('click', async () => {
-  if (confirm('Clear all leads and logs for a clean demonstration?')) {
+document.getElementById('clearDataBtn').addEventListener('click', async () => {
+  if (confirm('Reset all leads and logs for a clean demonstration?')) {
     await fetch('/api/clear', { method: 'POST' });
   }
 });
 
 // Audio Toggle
-const toggleSoundBtn = document.getElementById('toggleSoundBtn');
+const soundToggleBtn = document.getElementById('soundToggleBtn');
 const soundIcon = document.getElementById('soundIcon');
-toggleSoundBtn.addEventListener('click', () => {
+soundToggleBtn.addEventListener('click', () => {
   audioEnabled = !audioEnabled;
   soundIcon.className = audioEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
-  showToast(audioEnabled ? 'Audio alerts enabled' : 'Audio alerts muted', 'info');
+  showMetaToast(audioEnabled ? 'Sound alerts enabled' : 'Sound alerts muted', 'info');
 });
 
 // Search Filter
-leadSearchInput.addEventListener('input', (e) => {
+searchInput.addEventListener('input', (e) => {
   const query = e.target.value.toLowerCase().trim();
   document.querySelectorAll('#leadsTableBody tr').forEach(row => {
     const text = row.textContent.toLowerCase();
@@ -535,10 +577,10 @@ leadSearchInput.addEventListener('input', (e) => {
   });
 });
 
-// Channel Filter Buttons
-document.querySelectorAll('.filter-btn').forEach(btn => {
+// Filter Pills
+document.querySelectorAll('.filter-pill').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     activeFilter = btn.getAttribute('data-filter');
 
@@ -546,34 +588,30 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
       const source = (row.getAttribute('data-source') || '').toLowerCase();
       if (activeFilter === 'all') {
         row.style.display = '';
-      } else if (activeFilter === 'meta') {
-        row.style.display = source.includes('meta') || source.includes('facebook') || source.includes('instagram') ? '' : 'none';
-      } else if (activeFilter === 'instant') {
-        row.style.display = source.includes('instant') || source.includes('form') ? '' : 'none';
+      } else if (activeFilter === 'instagram') {
+        row.style.display = source.includes('instagram') ? '' : 'none';
+      } else if (activeFilter === 'facebook') {
+        row.style.display = source.includes('facebook') || source.includes('form') ? '' : 'none';
       }
     });
   });
 });
 
-// Global Keyboard Shortcuts: '/' for search, 'N' for new lead
-document.addEventListener('keydown', (e) => {
-  if (e.key === '/' && document.activeElement !== leadSearchInput) {
-    e.preventDefault();
-    leadSearchInput.focus();
-  }
-  if ((e.key === 'n' || e.key === 'N') && document.activeElement.tagName !== 'INPUT' && !simulateModalBackdrop.classList.contains('active')) {
-    e.preventDefault();
-    openSimulateModal();
-  }
-});
-
-// Relative Time Refresh Loop
-setInterval(() => {
-  document.querySelectorAll('.time-cell[data-time]').forEach(el => {
-    const t = el.getAttribute('data-time');
-    el.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeAgo(t)}`;
+// Copy Text Utility
+window.copyText = function(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    showMetaToast('Copied to clipboard', 'info');
   });
-  document.querySelectorAll('.device-time-tag[data-time]').forEach(el => {
+};
+
+// Periodic Timestamp Refresher
+setInterval(() => {
+  document.querySelectorAll('.time-stamp[data-time]').forEach(el => {
+    const t = el.getAttribute('data-time');
+    el.textContent = timeAgo(t);
+  });
+  document.querySelectorAll('.phone-lead-time[data-time]').forEach(el => {
     const t = el.getAttribute('data-time');
     el.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeAgo(t)}`;
   });
